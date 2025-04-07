@@ -321,7 +321,7 @@ where
 #[derive(Debug)]
 pub(crate) struct MessageReader<R> {
     #[pin]
-    inner: LengthDelimitedReader<R>,
+    pub(crate) inner: LengthDelimitedReader<R>,
 }
 
 impl<R> MessageReader<R> {

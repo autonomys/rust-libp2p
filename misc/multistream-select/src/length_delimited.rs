@@ -42,7 +42,7 @@ const DEFAULT_BUFFER_SIZE: usize = 64;
 pub(crate) struct LengthDelimited<R> {
     /// The inner I/O resource.
     #[pin]
-    inner: R,
+    pub(crate) inner: R,
     /// Read buffer for a single incoming unsigned-varint length-delimited frame.
     read_buffer: BytesMut,
     /// Write buffer for outgoing unsigned-varint length-delimited frames.
@@ -298,7 +298,7 @@ where
 #[derive(Debug)]
 pub(crate) struct LengthDelimitedReader<R> {
     #[pin]
-    inner: LengthDelimited<R>,
+    pub(crate) inner: LengthDelimited<R>,
 }
 
 impl<R> LengthDelimitedReader<R> {

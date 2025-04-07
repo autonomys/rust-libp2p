@@ -199,6 +199,7 @@ impl UpgradeInfo for ProtocolConfig {
 }
 
 /// Codec for Kademlia inbound and outbound message framing.
+#[derive(Debug)]
 pub struct Codec<A, B> {
     codec: quick_protobuf_codec::Codec<proto::Message>,
     __phantom: PhantomData<(A, B)>,

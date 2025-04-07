@@ -56,7 +56,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub use self::boxed::StreamMuxerBox;
-pub use self::boxed::SubstreamBox;
+pub use self::boxed::{AsyncReadWrite, SubstreamBox};
 
 mod boxed;
 

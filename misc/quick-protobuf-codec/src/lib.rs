@@ -15,6 +15,7 @@ pub use generated::test as proto;
 ///
 /// to prefix messages with their length and uses [`quick_protobuf`] and a provided
 /// `struct` implementing [`MessageRead`] and [`MessageWrite`] to do the encoding.
+#[derive(Debug)]
 pub struct Codec<In, Out = In> {
     max_message_len_bytes: usize,
     phantom: PhantomData<(In, Out)>,

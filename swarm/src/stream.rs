@@ -9,8 +9,16 @@ use std::{
 };
 
 /// Counter for the number of active streams on a connection.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct ActiveStreamCounter(Arc<()>);
+
+impl std::fmt::Debug for ActiveStreamCounter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ActiveStreamCounter")
+            .field(&self.num_alive_streams())
+            .finish()
+    }
+}
 
 impl ActiveStreamCounter {
     pub(crate) fn default() -> Self {
@@ -28,7 +36,7 @@ impl ActiveStreamCounter {
 
 #[derive(Debug)]
 pub struct Stream {
-    stream: Negotiated<SubstreamBox>,
+    pub stream: Negotiated<SubstreamBox>,
     counter: Option<ActiveStreamCounter>,
 }
 

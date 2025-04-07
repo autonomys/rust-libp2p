@@ -48,7 +48,7 @@ use std::{
 #[derive(Debug)]
 pub struct Negotiated<TInner> {
     #[pin]
-    state: State<TInner>,
+    pub state: State<TInner>,
 }
 
 /// A `Future` that waits on the completion of protocol negotiation.
@@ -197,7 +197,8 @@ impl<TInner> Negotiated<TInner> {
 /// The states of a `Negotiated` I/O stream.
 #[pin_project(project = StateProj)]
 #[derive(Debug)]
-enum State<R> {
+#[allow(private_interfaces)]
+pub enum State<R> {
     /// In this state, a `Negotiated` is still expecting to
     /// receive confirmation of the protocol it has optimistically
     /// settled on.
@@ -222,6 +223,26 @@ enum State<R> {
     /// Temporary state while moving the `io` resource from
     /// `Expecting` to `Completed`.
     Invalid,
+}
+
+impl<R> State<R> {
+    /// Returns the underlying protocol, if negotiation is in progress.
+    pub fn protocol(&self) -> Option<&str> {
+        match self {
+            State::Expecting { protocol, .. } => Some(protocol.as_ref()),
+            State::Completed { .. } => None,
+            State::Invalid => None,
+        }
+    }
+
+    /// Returns the underlying stream, if it is available.
+    pub fn inner(&self) -> Option<&R> {
+        match self {
+            State::Expecting { io, .. } => Some(&io.inner.inner.inner),
+            State::Completed { io } => Some(io),
+            State::Invalid => None,
+        }
+    }
 }
 
 impl<TInner> AsyncRead for Negotiated<TInner>

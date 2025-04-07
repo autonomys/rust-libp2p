@@ -152,7 +152,7 @@ impl fmt::Debug for SubstreamBox {
 }
 
 /// Workaround because Rust does not allow `Box<dyn AsyncRead + AsyncWrite>`.
-trait AsyncReadWrite: AsyncRead + AsyncWrite {
+pub trait AsyncReadWrite: AsyncRead + AsyncWrite {
     /// Helper function to capture the erased inner type.
     ///
     /// Used to make the [`Debug`] implementation of [`SubstreamBox`] more useful.

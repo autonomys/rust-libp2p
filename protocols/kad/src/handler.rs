@@ -35,7 +35,7 @@ use libp2p_swarm::{
     ConnectionHandler, ConnectionHandlerEvent, Stream, StreamUpgradeError, SubstreamProtocol,
     SupportedProtocols,
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::task::Waker;
 use std::time::Duration;
 use std::{error, fmt, io, marker::PhantomData, pin::Pin, task::Context, task::Poll};
@@ -98,6 +98,7 @@ struct ProtocolStatus {
 }
 
 /// State of an active inbound substream.
+#[derive(Debug)]
 enum InboundSubstreamState {
     /// Waiting for a request from the remote.
     WaitingMessage {
@@ -172,6 +173,23 @@ impl InboundSubstreamState {
             }
             InboundSubstreamState::Poisoned { .. } => unreachable!(),
         }
+    }
+
+    /// Returns the `KadInStreamSink` associated with this state, or `None` if the state has no substream.
+    fn sink(&self) -> Option<&KadInStreamSink<Stream>> {
+        match self {
+            InboundSubstreamState::WaitingMessage { substream, .. }
+            | InboundSubstreamState::WaitingBehaviour(_, substream, _)
+            | InboundSubstreamState::PendingSend(_, substream, _)
+            | InboundSubstreamState::PendingFlush(_, substream)
+            | InboundSubstreamState::Closing(substream) => Some(substream),
+            InboundSubstreamState::Cancelled | InboundSubstreamState::Poisoned { .. } => None,
+        }
+    }
+
+    /// Returns the `Stream` associated with this state, or `None` if the state has no substream.
+    fn stream(&self) -> Option<&Stream> {
+        self.sink().map(|v| &**v)
     }
 }
 
@@ -524,15 +542,23 @@ impl Handler {
                     InboundSubstreamState::WaitingMessage { first: false, .. }
                 )
             }) {
+                let prev_state = format!("{s:?}");
+
                 *s = InboundSubstreamState::Cancelled;
+
                 tracing::debug!(
                     peer=?self.remote_peer_id,
+                    ?prev_state,
+                    ?MAX_NUM_STREAMS,
+                    active_streams=?self.debug_inbound_substreams(),
                     "New inbound substream to peer exceeds inbound substream limit. \
                     Removed older substream waiting to be reused."
-                )
+                );
             } else {
                 tracing::warn!(
                     peer=?self.remote_peer_id,
+                    ?MAX_NUM_STREAMS,
+                    active_streams=?self.debug_inbound_substreams(),
                     "New inbound substream to peer exceeds inbound substream limit. \
                      No older substream waiting to be reused. Dropping new substream."
                 );
@@ -548,6 +574,30 @@ impl Handler {
                 connection_id: connec_unique_id,
                 substream: protocol,
             });
+    }
+
+    /// Returns a summary of the protocols of the inbound substreams.
+    fn debug_inbound_substreams(&self) -> String {
+        use libp2p_core::muxing::AsyncReadWrite;
+
+        let mut protocols = HashMap::<_, usize>::new();
+        let mut stream_types = HashMap::<_, usize>::new();
+
+        for substream in &self.inbound_substreams {
+            let state = substream.stream().map(|s| &s.stream.state);
+            let protocol = state.and_then(|s| s.protocol());
+            let stream_type = state.and_then(|s| s.inner()).map(|i| i.type_name());
+
+            if let Some(protocol) = protocol {
+                *protocols.entry(protocol).or_default() += 1;
+            }
+
+            if let Some(stream_type) = stream_type {
+                *stream_types.entry(stream_type).or_default() += 1;
+            }
+        }
+
+        format!("protocols: {protocols:?}, stream types: {stream_types:?}")
     }
 
     /// Takes the given [`KadRequestMsg`] and composes it into an outbound request-response protocol handshake using a [`oneshot::channel`].

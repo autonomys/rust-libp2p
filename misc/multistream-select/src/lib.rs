@@ -95,7 +95,7 @@ mod protocol;
 
 pub use self::dialer_select::{dialer_select_proto, DialerSelectFuture};
 pub use self::listener_select::{listener_select_proto, ListenerSelectFuture};
-pub use self::negotiated::{Negotiated, NegotiatedComplete, NegotiationError};
+pub use self::negotiated::{Negotiated, NegotiatedComplete, NegotiationError, State};
 pub use self::protocol::ProtocolError;
 
 /// Supported multistream-select versions.
