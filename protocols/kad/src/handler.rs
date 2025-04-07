@@ -450,14 +450,14 @@ impl Handler {
     ) -> Self {
         match &endpoint {
             ConnectedPoint::Dialer { .. } => {
-                tracing::debug!(
+                tracing::trace!(
                     peer=%remote_peer_id,
                     mode=%mode,
                     "New outbound connection"
                 );
             }
             ConnectedPoint::Listener { .. } => {
-                tracing::debug!(
+                tracing::trace!(
                     peer=%remote_peer_id,
                     mode=%mode,
                     "New inbound connection"
