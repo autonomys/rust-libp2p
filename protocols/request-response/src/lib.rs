@@ -84,7 +84,7 @@ use libp2p_identity::PeerId;
 use libp2p_swarm::{
     behaviour::{AddressChange, ConnectionClosed, DialFailure, FromSwarm},
     dial_opts::DialOpts,
-    ConnectionDenied, ConnectionHandler, ConnectionId, NetworkBehaviour, NotifyHandler,
+    ConnectionDenied, ConnectionHandler, ConnectionId, DialError, NetworkBehaviour, NotifyHandler,
     PeerAddresses, THandler, THandlerInEvent, THandlerOutEvent, ToSwarm,
 };
 use smallvec::SmallVec;
@@ -708,24 +708,36 @@ where
         }
     }
 
-    fn on_dial_failure(&mut self, failure: DialFailure) {
-        let key = if let Some(peer_id) = failure.peer_id {
+    fn on_dial_failure(
+        &mut self,
+        DialFailure {
+            peer_id,
+            connection_id,
+            error,
+        }: DialFailure,
+    ) {
+        if let DialError::DialPeerConditionFalse(_) = error {
+            // Dial-condition fails because there is already another ongoing dial.
+            return;
+        }
+
+        let key = if let Some(peer_id) = peer_id {
             peer_id.into()
         } else {
-            failure.connection_id.into()
+            connection_id.into()
         };
 
         // If there are pending outgoing requests when a dial failure occurs,
         // it is implied that we are not connected to the peer, since pending
         // outgoing requests are drained when a connection is established and
         // only created when a peer is not connected when a request is made.
-        // Thus, these requests must be considered failed, even if there is
+        // Thus these requests must be considered failed, even if there is
         // another, concurrent dialing attempt ongoing.
         if let Some(pending) = self.pending_outbound_requests.remove(&key) {
             for request in pending {
                 self.pending_events
                     .push_back(ToSwarm::GenerateEvent(Event::OutboundFailure {
-                        peer: failure.peer_id,
+                        peer: peer_id,
                         request_id: request.request_id,
                         error: OutboundFailure::DialFailure,
                     }));
